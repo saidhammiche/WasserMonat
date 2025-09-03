@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Table, Button, Modal, Form, Input, Spin, Alert, Select, Row, Col, Card } from "antd";
+import { Table, Button, Modal, Form, Input, Spin, Alert, Select, Row, Col, Card, Typography } from "antd";
 import {
   EditOutlined,
   SyncOutlined,
@@ -11,6 +11,13 @@ import {
 import axios from "axios";
 
 const { Option } = Select;
+const { Title } = Typography;
+
+// Tableau des noms de mois en allemand
+const monthNames = [
+  "Januar", "Februar", "März", "April", "Mai", "Juni",
+  "Juli", "August", "September", "Oktober", "November", "Dezember"
+];
 
 const AppWasserMonat = () => {
   const [data, setData] = useState([]);
@@ -31,30 +38,45 @@ const AppWasserMonat = () => {
       setLoadingAktualisieren(true);
       const res = await axios.get("http://localhost:5000/api/wassermonat");
       const allData = res.data;
-      setData(allData);
+      
+      // Ajouter le nom du mois en fonction du numéro
+      const dataWithMonthNames = allData.map(item => ({
+        ...item,
+        Monatname: monthNames[item.Monat - 1] || `Monat ${item.Monat}`
+      }));
+      
+      setData(dataWithMonthNames);
 
       const uniqueYears = [...new Set(allData.map((d) => d.Jahr))].sort();
-      const uniqueMonths = [...new Set(allData.map((d) => d.Monat))].sort();
+      // Utiliser les noms de mois au lieu des numéros
+      const uniqueMonths = [...new Set(allData.map((d) => d.Monat))]
+        .sort((a, b) => a - b)
+        .map(monthNum => ({
+          value: monthNum,
+          label: monthNames[monthNum - 1] || `Monat ${monthNum}`
+        }));
+        
       setYears(uniqueYears);
       setMonths(uniqueMonths);
 
       const latestYear = Math.max(...uniqueYears);
       setSelectedYear(latestYear);
-      filterData(allData, latestYear, null);
+      filterData(dataWithMonthNames, latestYear, null);
     } catch (err) {
       console.error(err);
     } finally {
       setLoadingAktualisieren(false);
     }
-  }, []); // Aucune dépendance car cette fonction ne dépend que de setState
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]); // Maintenant fetchData est une dépendance stable
+  }, [fetchData]);
 
   const filterData = (allData, year, month) => {
     let yearData = allData.filter((d) => d.Jahr === year);
     if (month) yearData = yearData.filter((d) => d.Monat === month);
+    // Trier par numéro de mois pour garder l'ordre chronologique
     yearData.sort((a, b) => a.Monat - b.Monat);
 
     const sumRow = {
@@ -122,11 +144,11 @@ const AppWasserMonat = () => {
     { title: "Monat", dataIndex: "Monat", key: "Monat" },
     { title: "Monatname", dataIndex: "Monatname", key: "Monatname" },
     {
-      title: "Wasser-Zählerstand",
+      title: "Wasser-Zählerstand (m3)",
       dataIndex: "Wasser-Zählerstand",
       key: "Wasser-Zählerstand",
     },
-    { title: "Wasserverbrauch", dataIndex: "Wasserverbrauch", key: "Wasserverbrauch" },
+    { title: "Wasserverbrauch (m3)", dataIndex: "Wasserverbrauch", key: "Wasserverbrauch" },
     {
       title: "Aktion",
       key: "aktion",
@@ -147,7 +169,32 @@ const AppWasserMonat = () => {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2 style={{ textAlign: "center", marginBottom: 20 }}>Wasser Monatsdaten</h2>
+      {/* Titre moderne et professionnel */}
+      <div style={{ 
+        textAlign: "center", 
+        marginBottom: 30,
+        background: "linear-gradient(135deg, #3b7695 0%, #2c5c77 100%)",
+        padding: "20px",
+        borderRadius: "8px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        color: "white"
+      }}>
+        <Title level={2} style={{ 
+          color: "white", 
+          margin: 0,
+          fontWeight: 600,
+          letterSpacing: "0.5px"
+        }}>
+          📊 Wasser Monatsdaten Analyse
+        </Title>
+        <p style={{ 
+          margin: "10px 0 0 0", 
+          opacity: 0.9,
+          fontSize: "16px"
+        }}>
+          Überwachung und Verwaltung der monatlichen Wasserverbrauchsdaten
+        </p>
+      </div>
 
       {/* Section Filtres */}
       <Card
@@ -179,7 +226,7 @@ const AppWasserMonat = () => {
               allowClear
             >
               {months.map((m) => (
-                <Option key={m} value={m}>{m}</Option>
+                <Option key={m.value} value={m.value}>{m.label}</Option>
               ))}
             </Select>
           </Col>
