@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  frontend_project13:
+    build: ./frontend
+    container_name: frontend_project13_container
+    ports:
+      - "3013:80"
+    restart: unless-stopped
+
+  backend_project13:
+    build: ./backend
+    container_name: backend_project13_container
+    ports:
+      - "5013:5000"
+    restart: unless-stopped
