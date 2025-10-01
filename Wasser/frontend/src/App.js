@@ -36,7 +36,7 @@ const AppWasserMonat = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoadingAktualisieren(true);
-      const res = await axios.get("http://4.245.3.186:5013/api/wassermonat");
+      const res = await axios.get("http://48.209.33.37:5009/api/wassermonat");
       const allData = res.data;
       
       // Ajouter le nom du mois en fonction du numéro
@@ -119,7 +119,7 @@ const AppWasserMonat = () => {
       const start = Date.now();
 
       await axios.put(
-        `http://4.245.3.186:5013/api/wassermonat/${editingRecord.WasserMonatID}`,
+        `http://48.209.33.37:5009/api/wassermonat/${editingRecord.WasserMonatID}`,
         values
       );
 
