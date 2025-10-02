@@ -7,6 +7,7 @@ import {
   ScheduleOutlined,
   FilterOutlined,
   ReloadOutlined,
+  PlusOutlined
 } from "@ant-design/icons";
 import axios from "axios";
 
@@ -27,7 +28,9 @@ const AppWasserMonat = () => {
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [addingRecord, setAddingRecord] = useState(false);
   const [form] = Form.useForm();
+  const [addForm] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
   const [loadingAktualisieren, setLoadingAktualisieren] = useState(false);
@@ -39,7 +42,6 @@ const AppWasserMonat = () => {
       const res = await axios.get("http://48.209.33.37:5009/api/wassermonat");
       const allData = res.data;
       
-      // Ajouter le nom du mois en fonction du numéro
       const dataWithMonthNames = allData.map(item => ({
         ...item,
         Monatname: monthNames[item.Monat - 1] || `Monat ${item.Monat}`
@@ -48,7 +50,6 @@ const AppWasserMonat = () => {
       setData(dataWithMonthNames);
 
       const uniqueYears = [...new Set(allData.map((d) => d.Jahr))].sort();
-      // Utiliser les noms de mois au lieu des numéros
       const uniqueMonths = [...new Set(allData.map((d) => d.Monat))]
         .sort((a, b) => a - b)
         .map(monthNum => ({
@@ -76,7 +77,6 @@ const AppWasserMonat = () => {
   const filterData = (allData, year, month) => {
     let yearData = allData.filter((d) => d.Jahr === year);
     if (month) yearData = yearData.filter((d) => d.Monat === month);
-    // Trier par numéro de mois pour garder l'ordre chronologique
     yearData.sort((a, b) => a.Monat - b.Monat);
 
     const sumRow = {
@@ -115,25 +115,32 @@ const AppWasserMonat = () => {
     try {
       const values = await form.validateFields();
       setSaving(true);
-
-      const start = Date.now();
-
       await axios.put(
         `http://48.209.33.37:5009/api/wassermonat/${editingRecord.WasserMonatID}`,
         values
       );
+      setEditingRecord(null);
+      setSaving(false);
+      fetchData();
+      setSuccessMessage("✅ Änderungen wurden erfolgreich gespeichert!");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-      const elapsed = Date.now() - start;
-      const remaining = 2000 - elapsed;
-
-      setTimeout(() => {
-        setEditingRecord(null);
-        setSaving(false);
-        fetchData();
-
-        setSuccessMessage("✅ Änderungen wurden erfolgreich gespeichert!");
-        setTimeout(() => setSuccessMessage(null), 4000);
-      }, remaining > 0 ? remaining : 0);
+  // Ajouter un nouveau record
+  const handleAdd = async () => {
+    try {
+      const values = await addForm.validateFields();
+      setSaving(true);
+      await axios.post("http://48.209.33.37:5009/api/wassermonat", values);
+      setAddingRecord(false);
+      setSaving(false);
+      fetchData();
+      setSuccessMessage("✅ Neue Daten wurden erfolgreich hinzugefügt!");
+      setTimeout(() => setSuccessMessage(null), 4000);
+      addForm.resetFields();
     } catch (err) {
       console.error(err);
     }
@@ -169,7 +176,7 @@ const AppWasserMonat = () => {
 
   return (
     <div style={{ padding: 20 }}>
-      {/* Titre moderne et professionnel */}
+      {/* Titre */}
       <div style={{ 
         textAlign: "center", 
         marginBottom: 30,
@@ -179,19 +186,10 @@ const AppWasserMonat = () => {
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
         color: "white"
       }}>
-        <Title level={2} style={{ 
-          color: "white", 
-          margin: 0,
-          fontWeight: 600,
-          letterSpacing: "0.5px"
-        }}>
+        <Title level={2} style={{ color: "white", margin: 0, fontWeight: 600 }}>
           📊 Wasser Monatsdaten Analyse
         </Title>
-        <p style={{ 
-          margin: "10px 0 0 0", 
-          opacity: 0.9,
-          fontSize: "16px"
-        }}>
+        <p style={{ margin: "10px 0 0 0", opacity: 0.9, fontSize: "16px" }}>
           Überwachung und Verwaltung der monatlichen Wasserverbrauchsdaten
         </p>
       </div>
@@ -202,6 +200,11 @@ const AppWasserMonat = () => {
         style={{ marginBottom: 20, borderColor: "#3b7695", borderWidth: 2, borderStyle: "solid" }}
         headStyle={{ backgroundColor: "#3b7695", color: "#fff", fontWeight: "bold" }}
         bodyStyle={{ padding: 15 }}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddingRecord(true)}>
+            Neue Werte hinzufügen
+          </Button>
+        }
       >
         <Row gutter={[15, 15]} justify="start" align="middle">
           <Col xs={24} sm={12} md={6}>
@@ -279,7 +282,6 @@ const AppWasserMonat = () => {
           bordered
           scroll={{ x: "max-content" }}
           rowClassName={(record) => (record.key === "sum" ? "sum-row" : "")}
-          // inline style pour la ligne Summe
           components={{
             body: {
               row: ({ children, ...props }) => {
@@ -293,35 +295,483 @@ const AppWasserMonat = () => {
         />
       </Card>
 
-      {/* Modal édition */}
+      {/* Modal édition - Version Professionnelle Améliorée */}
       <Modal
         open={!!editingRecord}
-        title="Daten bearbeiten"
+        title={
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <EditOutlined style={{ color: '#3b7695', fontSize: '24px', marginRight: '10px' }} />
+            <span style={{ fontSize: '18px', fontWeight: '600', color: '#3b7695' }}>
+              Wasserverbrauchsdaten bearbeiten
+            </span>
+          </div>
+        }
         onCancel={() => setEditingRecord(null)}
         onOk={handleSave}
-        okText="Speichern"
+        okText={
+          <span>
+            <EditOutlined />
+            Änderungen speichern
+          </span>
+        }
         cancelText="Abbrechen"
-        okButtonProps={{ disabled: saving }}
+        okButtonProps={{ 
+          disabled: saving,
+          style: { background: '#3b7695', borderColor: '#3b7695' }
+        }}
+        width={600}
+        style={{ top: 20 }}
       >
-        <Spin spinning={saving} tip="Bitte warten..." size="large">
-          <div style={{ marginBottom: 15, fontStyle: "italic", color: "#555" }}>
-            Bitte ändern Sie die Werte und klicken Sie anschließend auf <b>Speichern</b>.
+        <Spin spinning={saving} tip="Änderungen werden gespeichert..." size="large">
+          
+          {/* Section d'informations du record */}
+          {editingRecord && (
+            <div style={{
+              background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+              border: '1px solid #ffb74d',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              borderLeft: '4px solid #ff9800'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start',
+                gap: '12px'
+              }}>
+                <div style={{
+                  background: '#ff9800',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: '2px'
+                }}>
+                  <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>i</span>
+                </div>
+                <div>
+                  <p style={{ 
+                    margin: '0 0 8px 0', 
+                    fontWeight: '600',
+                    color: '#e65100',
+                    fontSize: '14px'
+                  }}>
+                    Datensatz bearbeiten
+                  </p>
+                  <p style={{ 
+                    margin: 0,
+                    color: '#bf360c',
+                    fontSize: '13px',
+                    lineHeight: '1.5'
+                  }}>
+                    Sie bearbeiten die Daten für <strong>{monthNames[editingRecord.Monat - 1]}</strong> {editingRecord.Jahr}. 
+                    Bitte nehmen Sie die erforderlichen Anpassungen vor.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section Zeitraum (informative - non éditable) */}
+          <div style={{
+            background: '#f5f5f5',
+            padding: '16px',
+            borderRadius: '6px',
+            marginBottom: '20px',
+            border: '1px solid #d9d9d9'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              marginBottom: '16px',
+              paddingBottom: '12px',
+              borderBottom: '2px solid #3b7695'
+            }}>
+              <CalendarOutlined style={{ color: '#3b7695', marginRight: '8px' }} />
+              <span style={{ fontWeight: '600', color: '#3b7695', fontSize: '15px' }}>
+                Zeitraum (nicht änderbar)
+              </span>
+            </div>
+            
+            <Row gutter={16}>
+              <Col span={12}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontWeight: '500',
+                    marginBottom: '8px',
+                    color: '#595959'
+                  }}>
+                    Jahr
+                  </label>
+                  <Input 
+                    value={editingRecord?.Jahr} 
+                    disabled 
+                    style={{ 
+                      height: '40px',
+                      background: '#fafafa',
+                      color: '#8c8c8c'
+                    }}
+                    prefix={<CalendarOutlined style={{ color: '#bfbfbf' }} />}
+                  />
+                </div>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    fontWeight: '500',
+                    marginBottom: '8px',
+                    color: '#595959'
+                  }}>
+                    Monat
+                  </label>
+                  <Input 
+                    value={editingRecord ? monthNames[editingRecord.Monat - 1] : ''} 
+                    disabled 
+                    style={{ 
+                      height: '40px',
+                      background: '#fafafa',
+                      color: '#8c8c8c'
+                    }}
+                    prefix={<ScheduleOutlined style={{ color: '#bfbfbf' }} />}
+                  />
+                </div>
+              </Col>
+            </Row>
           </div>
 
-          <Form form={form} layout="vertical">
-            <Form.Item
-              label={<span style={{ fontWeight: "bold" }}>Wasser-Zählerstand</span>}
-              name="Wasser-Zählerstand"
-            >
-              <Input type="number" placeholder="Neuen Wert eingeben" />
-            </Form.Item>
+          <Form form={form} layout="vertical" requiredMark="optional">
+            
+            {/* Section Verbrauchsdaten éditables */}
+            <div style={{
+              background: '#fafafa',
+              padding: '16px',
+              borderRadius: '6px',
+              border: '1px solid #f0f0f0'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #3b7695'
+              }}>
+                <ScheduleOutlined style={{ color: '#3b7695', marginRight: '8px' }} />
+                <span style={{ fontWeight: '600', color: '#3b7695', fontSize: '15px' }}>
+                  Verbrauchsdaten anpassen
+                </span>
+              </div>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Wasser-Zählerstand (m³) <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Wasser-Zählerstand" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte geben Sie den aktuellen Zählerstand ein' 
+                    }]}
+                    tooltip="Aktueller Stand des Wasserzählers in Kubikmetern"
+                  >
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="0.00" 
+                      style={{ height: '40px' }}
+                      prefix={<span style={{ color: '#999' }}>m³</span>}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Wasserverbrauch (m³) <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Wasserverbrauch" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte geben Sie den Verbrauchswert ein' 
+                    }]}
+                    tooltip="Verbrauchte Wassermenge in Kubikmetern für diesen Monat"
+                  >
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="0.00" 
+                      style={{ height: '40px' }}
+                      prefix={<span style={{ color: '#999' }}>m³</span>}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              {/* Note informative */}
+              <div style={{
+                background: '#f6ffed',
+                border: '1px solid #b7eb8f',
+                borderRadius: '4px',
+                padding: '8px 12px',
+                marginTop: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#52c41a', fontSize: '12px' }}>💡</span>
+                  <span style={{ fontSize: '12px', color: '#389e0d' }}>
+                    Aktualisieren Sie die Werte sorgfältig. Die Änderungen wirken sich direkt auf die Verbrauchsanalyse aus.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Form>
+        </Spin>
+      </Modal>
 
-            <Form.Item
-              label={<span style={{ fontWeight: "bold" }}>Wasserverbrauch</span>}
-              name="Wasserverbrauch"
-            >
-              <Input type="number" placeholder="Neuen Wert eingeben" />
-            </Form.Item>
+      {/* Modal Ajout - Version Professionnelle Améliorée */}
+      <Modal
+        open={addingRecord}
+        title={
+          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+            <PlusOutlined style={{ color: '#3b7695', fontSize: '24px', marginRight: '10px' }} />
+            <span style={{ fontSize: '18px', fontWeight: '600', color: '#3b7695' }}>
+              Neue Wasserverbrauchsdaten erfassen
+            </span>
+          </div>
+        }
+        onCancel={() => setAddingRecord(false)}
+        onOk={handleAdd}
+        okText={
+          <span>
+            <PlusOutlined />
+            Daten hinzufügen
+          </span>
+        }
+        cancelText="Abbrechen"
+        okButtonProps={{ 
+          disabled: saving,
+          style: { background: '#3b7695', borderColor: '#3b7695' }
+        }}
+        width={600}
+        style={{ top: 20 }}
+      >
+        <Spin spinning={saving} tip="Daten werden gespeichert..." size="large">
+          
+          {/* Section d'instructions professionnelle */}
+          <div style={{
+            background: 'linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%)',
+            border: '1px solid #d6e4ff',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '24px',
+            borderLeft: '4px solid #3b7695'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start',
+              gap: '12px'
+            }}>
+              <div style={{
+                background: '#3b7695',
+                borderRadius: '50%',
+                width: '24px',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                marginTop: '2px'
+              }}>
+                <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>i</span>
+              </div>
+              <div>
+                <p style={{ 
+                  margin: '0 0 8px 0', 
+                  fontWeight: '600',
+                  color: '#2c3e50',
+                  fontSize: '14px'
+                }}>
+                  Anleitung zur Dateneingabe
+                </p>
+                <p style={{ 
+                  margin: 0,
+                  color: '#5c6b7a',
+                  fontSize: '13px',
+                  lineHeight: '1.5'
+                }}>
+                  Bitte erfassen Sie hier die monatlichen Wasserverbrauchsdaten. 
+                  Tragen Sie die Werte sorgfältig ein, um eine korrekte Verbrauchsanalyse zu gewährleisten.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Form form={addForm} layout="vertical" requiredMark="optional">
+            
+            {/* Section Zeitraum */}
+            <div style={{
+              background: '#fafafa',
+              padding: '16px',
+              borderRadius: '6px',
+              marginBottom: '20px',
+              border: '1px solid #f0f0f0'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #3b7695'
+              }}>
+                <CalendarOutlined style={{ color: '#3b7695', marginRight: '8px' }} />
+                <span style={{ fontWeight: '600', color: '#3b7695', fontSize: '15px' }}>
+                  Zeitraum festlegen
+                </span>
+              </div>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Jahr <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Jahr" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte geben Sie das Berichtsjahr ein' 
+                    }]}
+                  >
+                    <Input 
+                      type="number" 
+                      placeholder="z.B. 2025" 
+                      style={{ height: '40px' }}
+                      prefix={<CalendarOutlined style={{ color: '#999' }} />}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Monat <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Monat" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte wählen Sie den Berichtsmonat aus' 
+                    }]}
+                  >
+                    <Select 
+                      placeholder="Monat auswählen"
+                      style={{ height: '40px' }}
+                      suffixIcon={<ScheduleOutlined style={{ color: '#999' }} />}
+                    >
+                      {monthNames.map((m, i) => (
+                        <Option key={i+1} value={i+1}>
+                          {m}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </div>
+
+            {/* Section Verbrauchsdaten */}
+            <div style={{
+              background: '#fafafa',
+              padding: '16px',
+              borderRadius: '6px',
+              border: '1px solid #f0f0f0'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #3b7695'
+              }}>
+                <ScheduleOutlined style={{ color: '#3b7695', marginRight: '8px' }} />
+                <span style={{ fontWeight: '600', color: '#3b7695', fontSize: '15px' }}>
+                  Verbrauchsdaten erfassen
+                </span>
+              </div>
+              
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Wasser-Zählerstand (m³) <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Wasser-Zählerstand" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte geben Sie den aktuellen Zählerstand ein' 
+                    }]}
+                    tooltip="Aktueller Stand des Wasserzählers in Kubikmetern"
+                  >
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="0.00" 
+                      style={{ height: '40px' }}
+                      prefix={<span style={{ color: '#999' }}>m³</span>}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item 
+                    label={
+                      <span style={{ fontWeight: '500' }}>
+                        Wasserverbrauch (m³) <span style={{ color: '#ff4d4f' }}>*</span>
+                      </span>
+                    }
+                    name="Wasserverbrauch" 
+                    rules={[{ 
+                      required: true, 
+                      message: 'Bitte geben Sie den Verbrauchswert ein' 
+                    }]}
+                    tooltip="Verbrauchte Wassermenge in Kubikmetern für diesen Monat"
+                  >
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="0.00" 
+                      style={{ height: '40px' }}
+                      prefix={<span style={{ color: '#999' }}>m³</span>}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+              
+              {/* Note informative */}
+              <div style={{
+                background: '#fffbe6',
+                border: '1px solid #ffe58f',
+                borderRadius: '4px',
+                padding: '8px 12px',
+                marginTop: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#faad14', fontSize: '12px' }}>💡</span>
+                  <span style={{ fontSize: '12px', color: '#8c6e1c' }}>
+                    Die Werte werden in Kubikmetern (m³) erfasst. Bitte achten Sie auf die korrekte Dezimaltrennung.
+                  </span>
+                </div>
+              </div>
+            </div>
           </Form>
         </Spin>
       </Modal>

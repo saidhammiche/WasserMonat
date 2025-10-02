@@ -25,7 +25,7 @@ const dbConfig = {
 // GET: récupérer toutes les données ou filtrer par année/mois
 // -------------------------
 app.get("/api/wassermonat", async (req, res) => {
-  const { jahr, monat } = req.query; // pas de nouvelle colonne, utilise celle existante
+  const { jahr, monat } = req.query;
 
   try {
     const pool = await sql.connect(dbConfig);
@@ -71,6 +71,33 @@ app.put("/api/wassermonat/:id", async (req, res) => {
 });
 
 // -------------------------
+// POST: ajouter une nouvelle ligne
+// -------------------------
+app.post("/api/wassermonat", async (req, res) => {
+  const { Jahr, Monat, "Wasser-Zählerstand": zaehlerstand, Wasserverbrauch } = req.body;
+
+  try {
+    const pool = await sql.connect(dbConfig);
+    await pool
+      .request()
+      .input("jahr", sql.Int, Jahr)
+      .input("monat", sql.Int, Monat)
+      .input("zaehlerstand", sql.Int, zaehlerstand)
+      .input("verbrauch", sql.Int, Wasserverbrauch)
+      .query(
+        `INSERT INTO WasserMonat (Jahr, Monat, [Wasser-Zählerstand], Wasserverbrauch) 
+         VALUES (@jahr, @monat, @zaehlerstand, @verbrauch)`
+      );
+    res.json({ message: "Neue Daten erfolgreich hinzugefügt" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Fehler beim Hinzufügen der Daten" });
+  }
+});
+
+// -------------------------
 // Server écoute
 // -------------------------
-app.listen(PORT, () => console.log(`Server läuft auf Port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Server läuft auf Port ${PORT}`)
+);
